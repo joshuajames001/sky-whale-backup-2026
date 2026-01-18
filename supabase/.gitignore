@@ -1,0 +1,13 @@
+# Supabase
+.branches
+.temp
+
+# Environment variables (Důležité!)
+.env
+.env.keys
+.env.local
+.env.*.local
+
+# Node modules
+node_modules/
+dist/
