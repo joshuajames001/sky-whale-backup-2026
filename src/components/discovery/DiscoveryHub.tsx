@@ -443,7 +443,7 @@ export const DiscoveryHub = ({ onClose }: DiscoveryHubProps) => {
             {/* Content Area */}
             {
                 view !== 'trailer' && (
-                    <div ref={contentRef} className="flex-1 overflow-y-auto custom-scrollbar flex flex-col items-stretch relative z-20 pb-24 md:pb-0 w-full">
+                    <div ref={contentRef} className="flex-1 overflow-y-auto custom-scrollbar flex flex-col items-stretch relative z-20 pb-24 md:pb-0 w-full min-h-0 overscroll-y-auto">
                         <AnimatePresence mode="wait">
 
                             {/* 1. CATEGORIES */}

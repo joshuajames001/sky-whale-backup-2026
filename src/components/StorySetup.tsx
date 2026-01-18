@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Book, User, MapPin, Palette, ArrowRight, Sparkles, Wand2, PenTool } from 'lucide-react';
 import { generateStoryStructure, generateStoryIdea } from '../lib/storyteller';
+import { invokeEdgeFunction } from '../lib/edge-functions';
 import { supabase } from '../lib/supabase';
 import { StoryBook } from '../types';
 import { MagicLoading } from './MagicLoading';
@@ -11,6 +12,7 @@ import { StyleSelector } from './story/StyleSelector';
 import { VOICE_OPTIONS, DEFAULT_VOICE_ID } from '../lib/audio-constants';
 import { Mic } from 'lucide-react';
 import { VoicePreviewButton } from './audio/VoicePreviewButton';
+import { StoryChat } from './story/StoryChat';
 
 interface StorySetupProps {
     onComplete: (story: StoryBook) => Promise<void>;
@@ -20,7 +22,7 @@ interface StorySetupProps {
 import { useGuide } from '../hooks/useGuide';
 
 export const StorySetup: React.FC<StorySetupProps> = ({ onComplete, onOpenStore }) => {
-    const [mode, setMode] = useState<'select' | 'custom' | 'auto'>('select');
+    const [mode, setMode] = useState<'select' | 'custom' | 'auto' | 'chat' | 'architect'>('select');
     const [step, setStep] = useState(0);
     const [isGenerating, setIsGenerating] = useState(false);
     const [creationStatus, setCreationStatus] = useState<string | null>(null);
@@ -179,42 +181,62 @@ export const StorySetup: React.FC<StorySetupProps> = ({ onComplete, onOpenStore 
         return <MagicLoading status={creationStatus} style={formData.visual_style} />;
     }
 
+    if (mode === 'chat' || mode === 'architect') {
+        return (
+            <div className={`w-full max-w-4xl bg-slate-900/90 backdrop-blur-2xl rounded-[40px] shadow-2xl h-[80vh] min-h-[600px] border relative overflow-hidden flex flex-col ${mode === 'architect' ? 'border-emerald-500/20' : 'border-cyan-500/20'}`}>
+                <StoryChat
+                    mode={mode === 'architect' ? 'architect' : 'muse'}
+                    onCancel={() => setMode('select')}
+                    onComplete={(data) => {
+                        console.log("Chat Complete:", data);
+                        // TODO: Map chat data to formData and proceed
+                        setFormData(prev => ({ ...prev, ...data }));
+                        setMode('custom'); // Or go straight to generated
+                    }}
+                />
+            </div>
+        );
+    }
+
     if (mode === 'select') {
         return (
-            <div className="flex flex-col items-center gap-12 w-full max-w-6xl px-4 animate-in fade-in zoom-in duration-500">
+            <div className="flex flex-col items-center gap-8 w-full max-w-5xl px-4 animate-in fade-in zoom-in duration-500 py-10">
                 <div className="text-center space-y-4">
-                    <h1 className="text-4xl md:text-5xl font-black mb-4 text-white drop-shadow-lg text-center" style={{ fontFamily: 'Fredoka' }}>
+                    <h1 className="text-3xl md:text-5xl font-black mb-2 text-white drop-shadow-lg text-center" style={{ fontFamily: 'Fredoka' }}>
                         Jak začne tvé dobrodružství?
                     </h1>
-                    <p className="text-slate-400 text-lg md:text-xl text-center max-w-lg" style={{ fontFamily: 'Quicksand' }}>
+                    <p className="text-slate-400 text-lg text-center max-w-lg mx-auto" style={{ fontFamily: 'Quicksand' }}>
                         Každá cesta začíná prvním krokem. Vyber si tu svou.
                     </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12 w-full">
-                    {/* OPTION 1: CUSTOM EDITOR */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full pb-10">
+                    {/* OPTION 1: AI CHAT (NEW) */}
                     <motion.button
-                        id="custom-story-btn"
+                        id="ai-chat-btn"
                         whileHover={{ scale: 1.02, y: -5 }}
                         whileTap={{ scale: 0.98 }}
-                        onClick={() => setMode('custom')}
-                        className="group relative h-[400px] overflow-hidden rounded-[40px] bg-white/5 backdrop-blur-md border-2 border-white/10 hover:border-white/30 transition-all text-left flex flex-col justify-end p-10 shadow-2xl hover:shadow-indigo-500/10"
+                        onClick={() => setMode('chat')}
+                        className="group relative h-[280px] overflow-hidden rounded-[32px] bg-gradient-to-br from-blue-900 to-cyan-900 border-2 border-cyan-500/30 hover:border-cyan-400/50 transition-all text-left flex flex-col justify-end p-8 shadow-2xl shadow-cyan-900/40"
                     >
-                        {/* Background Effects */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                        <div className="absolute top-0 right-0 p-8 opacity-50 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700">
-                            <PenTool size={120} className="text-white/5 group-hover:text-white/10" />
+                        <div className="absolute top-6 right-6 z-20">
+                            <div className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full shadow-lg shadow-cyan-500/40 animate-pulse">
+                                AI Chat
+                            </div>
                         </div>
-
-                        {/* Content */}
-                        <div className="relative z-10 space-y-4">
-                            <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/20 group-hover:bg-white group-hover:text-indigo-900 transition-colors duration-300">
-                                <PenTool size={32} />
+                        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/circuit.png')] opacity-10 mix-blend-overlay" />
+                        <div className="absolute inset-0 bg-gradient-to-tr from-black/60 via-transparent to-transparent opacity-80" />
+                        <div className="absolute top-6 right-6 opacity-50 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700">
+                            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-white/10 group-hover:text-cyan-200/20"><path d="M12 8V4H8" /><rect width="16" height="12" x="4" y="8" rx="2" /><path d="M2 14h2" /><path d="M20 14h2" /><path d="M15 13v2" /><path d="M9 13v2" /></svg>
+                        </div>
+                        <div className="relative z-10 space-y-3">
+                            <div className="w-12 h-12 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/20 group-hover:scale-110 transition-transform duration-300">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white"><path d="M12 8V4H8" /><rect width="16" height="12" x="4" y="8" rx="2" /><path d="M2 14h2" /><path d="M20 14h2" /><path d="M15 13v2" /><path d="M9 13v2" /></svg>
                             </div>
                             <div>
-                                <h3 className="text-3xl font-bold text-white mb-2 group-hover:text-indigo-200 transition-colors">Vlastní příběh</h3>
-                                <p className="text-indigo-200/60 group-hover:text-indigo-100/80 leading-relaxed text-lg">
-                                    Máš jasnou vizi? Staň se architektem a vybuduj svůj svět detail po detailu.
+                                <h3 className="text-2xl font-bold text-white mb-1 group-hover:text-cyan-200 transition-colors">Pokec s Múzou</h3>
+                                <p className="text-cyan-200/60 group-hover:text-cyan-100/80 leading-relaxed text-sm">
+                                    Povykládej si o svém nápadu a společně ho vymyslíme.
                                 </p>
                             </div>
                         </div>
@@ -226,89 +248,96 @@ export const StorySetup: React.FC<StorySetupProps> = ({ onComplete, onOpenStore 
                         whileHover={{ scale: 1.02, y: -5 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={handleMagicLink}
-                        className="group relative h-[400px] overflow-hidden rounded-[40px] bg-indigo-950 border-2 border-indigo-500/30 hover:border-indigo-400/50 transition-all text-left flex flex-col justify-end p-10 shadow-2xl shadow-indigo-900/40 hover:shadow-indigo-500/40"
+                        className="group relative h-[280px] overflow-hidden rounded-[32px] bg-white/5 backdrop-blur-md border-2 border-white/10 hover:border-white/30 transition-all text-left flex flex-col justify-end p-8 shadow-2xl shadow-indigo-900/40 hover:shadow-indigo-500/40"
                     >
-                        {/* Badge */}
                         <div className="absolute top-6 right-6 z-20">
-                            <div className="bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs font-black tracking-widest uppercase px-4 py-1.5 rounded-full shadow-lg shadow-pink-500/40 animate-pulse">
-                                Novinka
+                            <div className="bg-gradient-to-r from-pink-500 to-rose-500 text-white text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full shadow-lg shadow-pink-500/40 animate-pulse">
+                                Rychlé
                             </div>
                         </div>
-
-                        {/* Cosmic Background */}
-                        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-40 mix-blend-overlay" />
-                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900 opacity-90 group-hover:opacity-100 transition-opacity duration-500" />
-
-                        {/* Animated Glow */}
-                        <div className="absolute -top-24 -right-24 w-64 h-64 bg-fuchsia-500/30 rounded-full blur-[100px] group-hover:bg-fuchsia-500/40 transition-colors duration-500" />
-                        <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-blue-500/20 rounded-full blur-[100px]" />
-
-                        {/* Floating Icon */}
-                        <div className="absolute top-12 right-12 opacity-50 group-hover:opacity-100 group-hover:rotate-12 group-hover:scale-110 transition-all duration-700">
-                            <Wand2 size={100} className="text-white/10 group-hover:text-white/20" />
+                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                        <div className="absolute top-6 right-6 opacity-50 group-hover:opacity-100 group-hover:rotate-12 group-hover:scale-110 transition-all duration-700">
+                            <Wand2 size={80} className="text-indigo-500/10 group-hover:text-indigo-400/20" />
                         </div>
-
-                        {/* Content */}
-                        <div className="relative z-10 space-y-4">
-                            <div className="w-16 h-16 bg-gradient-to-br from-amber-300 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/20 group-hover:scale-110 transition-transform duration-300">
-                                <Sparkles size={32} className="text-white" />
+                        <div className="relative z-10 space-y-3">
+                            <div className="w-12 h-12 bg-indigo-500/20 rounded-xl flex items-center justify-center backdrop-blur-md border border-indigo-500/30 group-hover:bg-indigo-500 group-hover:text-white transition-colors duration-300">
+                                <Wand2 size={24} />
                             </div>
                             <div>
-                                <h3 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-white mb-2">Magický Generátor</h3>
-                                <p className="text-indigo-200 group-hover:text-white leading-relaxed text-lg">
-                                    Nech se překvapit Múzou. Namícháme ti unikátní koktejl fantazie pouhým kliknutím.
+                                <h3 className="text-2xl font-bold text-white mb-1 group-hover:text-indigo-200 transition-colors">Magická hůlka</h3>
+                                <p className="text-indigo-200/60 group-hover:text-indigo-100/80 leading-relaxed text-sm">
+                                    Nech Múzu, ať tě překvapí. Jen jedno kliknutí.
                                 </p>
                             </div>
                         </div>
                     </motion.button>
 
-                    {/* OPTION 3: HERO STORY (Příběh hrdiny) */}
+                    {/* OPTION 3: HERO STORY */}
                     <motion.button
                         id="hero-story-btn"
                         whileHover={{ scale: 1.02, y: -5 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => {
                             setMode('custom');
-                            setFormData({ ...formData, hero_image_url: 'pending' }); // Mark as hero mode
+                            setFormData({ ...formData, hero_image_url: 'pending' });
                         }}
-                        className="group relative h-[400px] overflow-hidden rounded-[40px] bg-gradient-to-br from-emerald-900 to-teal-900 border-2 border-emerald-500/30 hover:border-emerald-400/50 transition-all text-left flex flex-col justify-end p-10 shadow-2xl shadow-emerald-900/40"
+                        className="group relative h-[280px] overflow-hidden rounded-[32px] bg-gradient-to-br from-emerald-900 to-teal-900 border-2 border-emerald-500/30 hover:border-emerald-400/50 transition-all text-left flex flex-col justify-end p-8 shadow-2xl shadow-emerald-900/40"
                     >
-                        {/* Badge */}
                         <div className="absolute top-6 right-6 z-20">
-                            <div className="bg-gradient-to-r from-emerald-500 to-green-500 text-white text-xs font-black tracking-widest uppercase px-4 py-1.5 rounded-full shadow-lg shadow-emerald-500/40">
+                            <div className="bg-gradient-to-r from-emerald-500 to-green-500 text-white text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full shadow-lg shadow-emerald-500/40">
                                 Hero Mode
                             </div>
                         </div>
-
-                        {/* Background */}
                         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20 mix-blend-overlay" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80" />
-
-                        {/* Icon */}
-                        <div className="absolute top-12 right-12 opacity-50 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700">
-                            <User size={100} className="text-white/10 group-hover:text-emerald-200/20" />
+                        <div className="absolute top-6 right-6 opacity-50 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700">
+                            <User size={80} className="text-white/10 group-hover:text-emerald-200/20" />
                         </div>
-
-                        {/* Content */}
-                        <div className="relative z-10 space-y-4">
-                            <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-110 transition-transform duration-300">
-                                <Sparkles size={32} className="text-white" />
+                        <div className="relative z-10 space-y-3">
+                            <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-110 transition-transform duration-300">
+                                <User size={24} className="text-white" />
                             </div>
                             <div>
-                                <h3 className="text-3xl font-bold text-white mb-2 group-hover:text-emerald-200 transition-colors">Příběh Hrdiny</h3>
-                                <p className="text-emerald-200/60 group-hover:text-emerald-100/80 leading-relaxed text-lg">
-                                    Nahraj fotku a staň se hlavním hrdinou svého vlastního dobrodružství.
+                                <h3 className="text-2xl font-bold text-white mb-1 group-hover:text-emerald-200 transition-colors">Příběh Hrdiny</h3>
+                                <p className="text-emerald-200/60 group-hover:text-emerald-100/80 leading-relaxed text-sm">
+                                    Nahraj fotku a staň se hlavním hrdinou.
                                 </p>
                             </div>
                         </div>
                     </motion.button>
+
+                    {/* OPTION 4: CUSTOM EDITOR */}
+                    <motion.button
+                        id="custom-story-btn"
+                        whileHover={{ scale: 1.02, y: -5 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setMode('custom')}
+                        className="group relative h-[280px] overflow-hidden rounded-[32px] bg-white/5 backdrop-blur-md border-2 border-white/10 hover:border-white/30 transition-all text-left flex flex-col justify-end p-8 shadow-2xl hover:shadow-indigo-500/10"
+                    >
+                        <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                        <div className="absolute top-6 right-6 opacity-50 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700">
+                            <PenTool size={80} className="text-white/5 group-hover:text-white/10" />
+                        </div>
+                        <div className="relative z-10 space-y-3">
+                            <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-md border border-white/20 group-hover:bg-white group-hover:text-indigo-900 transition-colors duration-300">
+                                <PenTool size={24} />
+                            </div>
+                            <div>
+                                <h3 className="text-2xl font-bold text-white mb-1 group-hover:text-indigo-200 transition-colors">Vlastní příběh</h3>
+                                <p className="text-indigo-200/60 group-hover:text-indigo-100/80 leading-relaxed text-sm">
+                                    Staň se architektem a vybuduj svůj svět detail po detailu.
+                                </p>
+                            </div>
+                        </div>
+                    </motion.button>
+
                 </div>
             </div >
         );
     }
 
     return (
-        <div className="w-full max-w-4xl bg-slate-900/80 backdrop-blur-2xl p-6 md:p-10 sm:rounded-[40px] shadow-2xl relative md:max-h-[90vh] md:overflow-y-auto no-scrollbar flex flex-col border-y sm:border border-white/10 min-h-screen sm:min-h-0">
+        <div className="w-full max-w-5xl mx-auto bg-slate-900/80 backdrop-blur-2xl p-6 md:p-10 sm:rounded-[40px] shadow-2xl relative flex flex-col border-y sm:border border-white/10 min-h-screen sm:min-h-fit my-10">
 
             {/* Header */}
             <div className="flex items-center justify-between mb-12">
@@ -323,6 +352,8 @@ export const StorySetup: React.FC<StorySetupProps> = ({ onComplete, onOpenStore 
                         <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${step >= i ? 'w-8 bg-violet-600' : 'w-2 bg-slate-200'}`} />
                     ))}
                 </div>
+
+
             </div>
 
             <h2 className="text-2xl md:text-3xl font-title font-bold text-white mb-1 flex items-center gap-3">
@@ -493,10 +524,10 @@ export const StorySetup: React.FC<StorySetupProps> = ({ onComplete, onOpenStore 
                                 </label>
                                 <div className="grid grid-cols-2 gap-3">
                                     {VOICE_OPTIONS.map((voice) => (
-                                        <button
+                                        <div
                                             key={voice.id}
                                             onClick={() => setFormData({ ...formData, voice_id: formData.voice_id === voice.id ? '' : voice.id })}
-                                            className={`p-3 rounded-xl border-2 transition-all flex items-center justify-between gap-3 ${formData.voice_id === voice.id ? 'border-violet-500 bg-violet-500/10 text-white' : 'border-white/10 bg-white/5 hover:border-white/30 text-slate-300'}`}
+                                            className={`p-3 rounded-xl border-2 transition-all flex items-center justify-between gap-3 cursor-pointer ${formData.voice_id === voice.id ? 'border-violet-500 bg-violet-500/10 text-white' : 'border-white/10 bg-white/5 hover:border-white/30 text-slate-300'}`}
                                         >
                                             <div className="flex items-center gap-3">
                                                 <span className="text-xl">{voice.emoji}</span>
@@ -507,7 +538,7 @@ export const StorySetup: React.FC<StorySetupProps> = ({ onComplete, onOpenStore 
                                             <div onClick={(e) => e.stopPropagation()}>
                                                 <VoicePreviewButton previewUrl={voice.previewUrl || ''} />
                                             </div>
-                                        </button>
+                                        </div>
                                     ))}
                                 </div>
                             </div>
@@ -594,6 +625,6 @@ export const StorySetup: React.FC<StorySetupProps> = ({ onComplete, onOpenStore 
                     </motion.div>
                 )}
             </AnimatePresence>
-        </div>
+        </div >
     );
 };
